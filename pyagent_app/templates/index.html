@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Supervisor</title>
+    <style>
+        ::selection {
+            background-color: rgb(69, 58, 112);
+            color: white;
+        }
+
+        :root {
+            --branding-color: #0A090D;
+            --secondary-color: #16131A;
+            --font-main-color: #d9d9d9;
+        }
+        body {
+            font-family: "Poppins", sans-serif;
+            color: var(--font-main-color);
+            background-color: var(--branding-color);
+        }
+
+        h1 {
+            font-family: monospace;
+            text-align: center;
+            margin-top: 3rem;
+            margin-bottom: 3rem;
+        }
+        .row{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-column-gap: 20px;
+            text-align: center;
+            
+        }
+ 
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        input, textarea {
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgb(122, 122, 122);
+            background-color: var(--branding-color);
+            border: none;
+            padding: 0.5rem;
+            color: var(--font-main-color);
+            margin-bottom: 1rem;
+            
+        }
+        #chatbot1-prompt, #chatbot2-prompt{
+            width: 700px;
+            height: 600px;
+        }
+        input[type="submit"] {
+            background-color: var(--secondary-color);
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+        }
+        input[type="submit"]:hover {
+            background-color: var(--font-main-color);
+        }
+        #chat-container {
+            display: none;
+        }
+        #chat-messages {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+        .user-message,
+        .chatbot1-message,
+        .chatbot2-message {
+            padding: 5px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            color: var(--branding-color);
+        }
+        .user-message {
+            background-color: #bdbdbd;
+        }
+        .chatbot1-message {
+            background-color: #6eadf0;
+        }
+        .chatbot2-message {
+            background-color: #7dff9c;
+        }
+        @media (max-width: 1600px) {
+  
+        #chatbot1-prompt, #chatbot2-prompt{
+            width: 550px;
+            height: 550px;
+        }
+        
+        }
+        @media (max-width: 1100px) {
+        .row {
+            display: flex;
+            flex-direction: column;
+        }
+        #chatbot1-prompt, #chatbot2-prompt{
+            width: 332px;
+            height: 229px;
+        }
+        
+        }
+    </style>
+</head>
+<body>
+    
+    <h1>Agent Supervisor</h1>
+<div class="container">
+    <form id="setup-form">
+        <label for="api-key">OpenAI API Key:</label>
+        <input type="password" id="api-key" name="api-key">
+        <br>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="chatbot1-prompt">Chatbot1 Prompt:</label>
+                    <textarea id="chatbot1-prompt" name="chatbot1-prompt" rows="30"></textarea>
+        <br>    
+                </div>
+                <div class="col-md-6">
+                    <label for="chatbot2-prompt">Chatbot2 Prompt:</label>
+                    <textarea id="chatbot2-prompt" name="chatbot2-prompt" rows="30"></textarea>
+        <br>
+                </div>
+            </div>
+        <input type="submit" value="Start Chat" >
+    </form>
+</div>
+
+
+    <!-- Include chat elements and JavaScript to handle form submission and AJAX requests here -->
+    <!-- Chat elements -->
+<div id="chat-container">
+    <div id="chat-messages">
+        <!-- Chat messages will be appended here -->
+    </div>
+    <form id="chat-form">
+        <input type="text" id="user-input" placeholder="Trigger message...">
+        <input type="submit" value="Continue">
+    </form>
+</div>
+
+<!-- Include jQuery library for AJAX -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- JavaScript code to handle form submission and AJAX requests -->
+<script>
+    // Prevent form submission on Enter key
+    document.querySelector('#setup-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+    });
+
+    document.querySelector('#setup-form').addEventListener('submit', startChat);
+
+    function startChat(e) {
+        e.preventDefault();
+
+        const apiKey = document.querySelector('#api-key').value.trim();
+        const chatbot1Prompt = document.querySelector('#chatbot1-prompt').value.trim();
+        const chatbot2Prompt = document.querySelector('#chatbot2-prompt').value.trim();
+
+        if (!apiKey || !chatbot1Prompt || !chatbot2Prompt) {
+            alert('Please fill all fields!');
+            return;
+        }
+
+        document.querySelector('#setup-form').removeEventListener('submit', startChat);
+        document.querySelector('#setup-form').style.display = 'none';
+        document.querySelector('#chat-container').style.display = 'block';
+
+        document.querySelector('#chat-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userInput = document.querySelector('#user-input').value.trim();
+            if (!userInput) return;
+
+            // Append user message to the chat container
+            const userMessage = document.createElement('div');
+            userMessage.classList.add('user-message');
+            userMessage.textContent = userInput;
+            document.querySelector('#chat-messages').appendChild(userMessage);
+
+            document.querySelector('#user-input').value = '';
+
+            // Send user input to the chat view using AJAX
+            $.ajax({
+                type: 'POST',
+                url: '{% url "chat" %}',
+                data: {
+                    user_input: userInput,
+                    api_key: apiKey,
+                    chatbot1_prompt: chatbot1Prompt,
+                    chatbot2_prompt: chatbot2Prompt,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                dataType: 'json',
+                success: (data) => {
+    // Format and indent the Python code
+    const formattedResponse1 = js_beautify(data.response1, { indent_size: 4, language: 'python' });
+    const formattedResponse2 = js_beautify(data.response2, { indent_size: 4, language: 'python' });
+
+    // Append chatbot1's response to the chat container
+    const chatbot1Message = document.createElement('div');
+    chatbot1Message.classList.add('chatbot1-message');
+    chatbot1Message.textContent = "Chatbot 1: \n" + formattedResponse1;
+    document.querySelector('#chat-messages').appendChild(chatbot1Message);
+
+    // Append chatbot2's response to the chat container
+    const chatbot2Message = document.createElement('div');
+    chatbot2Message.classList.add('chatbot2-message');
+    chatbot2Message.textContent = "Chatbot 2: \n" + formattedResponse2;
+    document.querySelector('#chat-messages').appendChild(chatbot2Message);
+},
+
+                error: (xhr, status, error) => {
+                    console.error('Error:', error);
+                }
+            });
+        });
+    }
+</script>
+
+<!-- Add some basic styling for chat elements -->
+<style>
+    #chat-container {
+        display: none;
+    }
+
+    #chat-messages {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+    }
+
+    .user-message,
+    .chatbot1-message,
+    .chatbot2-message {
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+
+    .user-message {
+        background-color: #bdbdbd;
+    }
+
+    .chatbot1-message {
+        background-color: #6eadf0;
+    }
+
+    .chatbot2-message {
+        background-color: #7dff9c;
+    }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.0/beautify.min.js"></script>
+
+
+</body>
+</html>
